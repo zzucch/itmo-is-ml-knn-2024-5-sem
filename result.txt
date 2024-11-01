@@ -1,15 +1,16 @@
-train_data.len() : 455
-test_data.len() : 114
+train_data.len() : 341
+test_data.len() : 136
 
-1. kernel: uniform, window: fixed, neighbours: 1, radius: 1, metric: manhattan  accuracy: 92.982%
-2. kernel: uniform, window: fixed, neighbours: 1, radius: 1, metric: squared euclidean  accuracy: 93.860%
-4. kernel: triangular, window: fixed, neighbours: 1, radius: 1, metric: manhattan       accuracy: 95.614%
-502. kernel: gaussian, window: unfixed, neighbours: 21, radius: 1, metric: manhattan    accuracy: 96.491%
-670. kernel: gaussian, window: unfixed, neighbours: 28, radius: 1, metric: manhattan    accuracy: 97.368%
+validation_data.len() : 92
+1. kernel: uniform, window: fixed, neighbours: 1, radius: 1, metric: manhattan  accuracy: 90.217%
+3. kernel: uniform, window: fixed, neighbours: 1, radius: 1, metric: chebyshev  accuracy: 92.391%
+4. kernel: triangular, window: fixed, neighbours: 1, radius: 1, metric: manhattan       accuracy: 94.565%
+7. kernel: epanechnikov, window: fixed, neighbours: 1, radius: 1, metric: manhattan     accuracy: 95.652%
+709. kernel: uniform, window: unfixed, neighbours: 30, radius: 1, metric: manhattan     accuracy: 96.739%
 
-best hyperparameters: Hyperparameters { k: 28, radius: 1.0, window: Unfixed, kernel: 0x5573a65fa8c0, metric: "manhattan" } // kernel is 'gaussian'
+best hyperparameters: Hyperparameters { k: 30, radius: 1.0, window: Unfixed, kernel: 0x560830904f10, metric: "manhattan" } // kernel is 'uniform'
 
 unweighted:
-accuracy: 97.36842105263158, train f1 score: 0.9623717217787914, test f1 score: 0.9866666666666667
+accuracy: 94.11764705882352, train f1 score: 0.9555895865237366, test f1 score: 0.9696969696969696
 weighted:
-accuracy: 96.49122807017544, train f1 score: 0.9682539682539683, test f1 score: 0.9821428571428571
+accuracy: 94.85294117647058, train f1 score: 0.9555895865237366, test f1 score: 0.9735849056603774

@@ -4,7 +4,7 @@ use knn::{
     kernel::{epanechnikov, gaussian, triangular, uniform},
     knn::{Data, Knn, WindowType, DIMENSIONS},
     lowess::lowess,
-    parse::breast_cancer::{parse, CsvEntry, Diagnosis},
+    parse::breast_cancer::{opposite_diagnosis, parse, CsvEntry, Diagnosis},
 };
 use plotters::{
     chart::ChartBuilder,
@@ -169,9 +169,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let data = csv_entries_to_data(entries);
 
-    let (train_data, test_data) = split_data(&data, 0.8);
+    const TRAIN_RATIO: f64 = 0.6;
+    const VALIDATION_RATIO: f64 = 0.6; // of data that is not train
+
+    let (train_data, test_data) = split_data(&data, TRAIN_RATIO);
+    let (test_data, validation_data) = split_data(&test_data, VALIDATION_RATIO);
     println!("train_data.len() : {}", train_data.len());
     println!("test_data.len() : {}", test_data.len());
+    println!("validation_data.len() : {}", validation_data.len());
 
     let kernel_functions: [(&str, fn(f64) -> f64); 4] = [
         ("uniform", uniform),
@@ -200,7 +205,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         train_data.len(),
                     );
                     knn_manhattan.fit(train_data.clone(), None);
-                    let accuracy = calculate_accuracy(&knn_manhattan, &test_data);
+                    let accuracy = calculate_accuracy(&knn_manhattan, &validation_data);
 
                     update_max_accuracy_and_print(
                         accuracy,
@@ -224,7 +229,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         train_data.len(),
                     );
                     knn_squared_euclidean.fit(train_data.clone(), None);
-                    let accuracy = calculate_accuracy(&knn_squared_euclidean, &test_data);
+                    let accuracy = calculate_accuracy(&knn_squared_euclidean, &validation_data);
 
                     update_max_accuracy_and_print(
                         accuracy,
@@ -248,7 +253,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                         train_data.len(),
                     );
                     knn_chebyshev.fit(train_data.clone(), None);
-                    let accuracy = calculate_accuracy(&knn_chebyshev, &test_data);
+                    let accuracy = calculate_accuracy(&knn_chebyshev, &validation_data);
 
                     update_max_accuracy_and_print(
                         accuracy,
@@ -291,12 +296,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 let train_predictions: Vec<_> = train_data
                     .iter()
-                    .map(|data| knn_manhattan.predict(&data.features).unwrap())
+                    .map(|data| {
+                        knn_manhattan
+                            .predict(&data.features)
+                            .unwrap_or(opposite_diagnosis(data.label))
+                    })
                     .collect();
 
                 let test_predictions: Vec<_> = test_data
                     .iter()
-                    .map(|data| knn_manhattan.predict(&data.features).unwrap())
+                    .map(|data| {
+                        knn_manhattan
+                            .predict(&data.features)
+                            .unwrap_or(opposite_diagnosis(data.label))
+                    })
                     .collect();
 
                 (train_predictions, test_predictions)
@@ -313,12 +326,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 let train_predictions: Vec<_> = train_data
                     .iter()
-                    .map(|data| knn_squared_euclidean.predict(&data.features).unwrap())
+                    .map(|data| {
+                        knn_squared_euclidean
+                            .predict(&data.features)
+                            .unwrap_or(opposite_diagnosis(data.label))
+                    })
                     .collect();
 
                 let test_predictions: Vec<_> = test_data
                     .iter()
-                    .map(|data| knn_squared_euclidean.predict(&data.features).unwrap())
+                    .map(|data| {
+                        knn_squared_euclidean
+                            .predict(&data.features)
+                            .unwrap_or(opposite_diagnosis(data.label))
+                    })
                     .collect();
 
                 (train_predictions, test_predictions)
@@ -335,12 +356,20 @@ fn main() -> Result<(), Box<dyn Error>> {
 
                 let train_predictions: Vec<_> = train_data
                     .iter()
-                    .map(|data| knn_chebyshev.predict(&data.features).unwrap())
+                    .map(|data| {
+                        knn_chebyshev
+                            .predict(&data.features)
+                            .unwrap_or(opposite_diagnosis(data.label))
+                    })
                     .collect();
 
                 let test_predictions: Vec<_> = test_data
                     .iter()
-                    .map(|data| knn_chebyshev.predict(&data.features).unwrap())
+                    .map(|data| {
+                        knn_chebyshev
+                            .predict(&data.features)
+                            .unwrap_or(opposite_diagnosis(data.label))
+                    })
                     .collect();
 
                 (train_predictions, test_predictions)
@@ -422,11 +451,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let train_predictions: Vec<_> = train_data
         .iter()
-        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .map(|data| {
+            knn_manhattan
+                .predict(&data.features)
+                .unwrap_or(opposite_diagnosis(data.label))
+        })
         .collect();
     let test_predictions: Vec<_> = test_data
         .iter()
-        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .map(|data| {
+            knn_manhattan
+                .predict(&data.features)
+                .unwrap_or(opposite_diagnosis(data.label))
+        })
         .collect();
 
     let unweighted_accuracy = calculate_accuracy(&knn_manhattan, &test_data);
@@ -440,11 +477,19 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let train_predictions: Vec<_> = train_data
         .iter()
-        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .map(|data| {
+            knn_manhattan
+                .predict(&data.features)
+                .unwrap_or(opposite_diagnosis(data.label))
+        })
         .collect();
     let test_predictions: Vec<_> = test_data
         .iter()
-        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .map(|data| {
+            knn_manhattan
+                .predict(&data.features)
+                .unwrap_or(opposite_diagnosis(data.label))
+        })
         .collect();
 
     let weighted_accuracy = calculate_accuracy(&knn_manhattan, &test_data);

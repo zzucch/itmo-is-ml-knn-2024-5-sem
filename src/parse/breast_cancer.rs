@@ -23,6 +23,13 @@ pub fn to_diagnosis(diagnosis: &str) -> Diagnosis {
     }
 }
 
+pub fn opposite_diagnosis(target: Diagnosis) -> Diagnosis {
+    match target {
+        Diagnosis::Malignant => Diagnosis::Benign,
+        Diagnosis::Benign => Diagnosis::Malignant,
+    }
+}
+
 pub fn z_score_normalize(data: &[f64]) -> Vec<f64> {
     let mean = data.iter().copied().sum::<f64>() / data.len() as f64;
     let variance = data.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / data.len() as f64;
