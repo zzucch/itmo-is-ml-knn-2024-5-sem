@@ -42,12 +42,12 @@ pub fn parse(file_path: &str) -> Result<Vec<CsvEntry>, Box<dyn Error>> {
     let mut values_list = Vec::new();
 
     for result in reader.records() {
-        let record = result?;
-
         const OS_FIELD_INDEX: usize = 2;
         const GENDER_FIELD_INDEX: usize = 9;
         const NUMERIC_FIELD_START: usize = 3;
         const NUMERIC_FIELD_END: usize = 8;
+
+        let record = result?;
 
         let os = record.get(OS_FIELD_INDEX).unwrap().to_string();
         let gender = record.get(GENDER_FIELD_INDEX).unwrap().to_string();
@@ -56,10 +56,10 @@ pub fn parse(file_path: &str) -> Result<Vec<CsvEntry>, Box<dyn Error>> {
             .iter()
             .enumerate()
             .filter_map(|(index, value)| {
-                if index < NUMERIC_FIELD_START || index > NUMERIC_FIELD_END {
-                    None
-                } else {
+                if (NUMERIC_FIELD_START..=NUMERIC_FIELD_END).contains(&index) {
                     value.parse::<f64>().ok()
+                } else {
+                    None
                 }
             })
             .collect();
@@ -84,7 +84,7 @@ pub fn parse(file_path: &str) -> Result<Vec<CsvEntry>, Box<dyn Error>> {
 
     let normalized_values = normalize(&values_list.concat());
 
-    let value_length = entries.get(0).map_or(0, |entry| entry.values.len());
+    let value_length = entries.first().map_or(0, |entry| entry.values.len());
 
     for (entry, new_values) in entries
         .iter_mut()

@@ -6,9 +6,9 @@ use crate::parse::breast_cancer::Diagnosis;
 
 pub const DIMENSIONS: usize = 30;
 
-const BUCKET_SIZE: usize = 512;
+const BUCKET_SIZE: usize = 32;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum WindowType {
     Fixed,
     Unfixed,
@@ -16,10 +16,11 @@ pub enum WindowType {
 
 #[derive(Clone, Copy)]
 pub struct Data {
-    pub x: [f64; DIMENSIONS],
-    pub y: Diagnosis,
+    pub features: [f64; DIMENSIONS],
+    pub label: Diagnosis,
 }
 
+#[derive(Clone)]
 pub struct Knn<M: DistanceMetric<f64, DIMENSIONS>> {
     k: usize,
     radius: f64,
@@ -43,11 +44,11 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
             k,
             radius,
             kernel,
-            window: window.clone(),
+            window: *window,
             kd_tree: KdTree::with_capacity(capacity),
             data: Vec::new(),
             weights: Vec::new(),
-            _marker: PhantomData, // Initialize PhantomData
+            _marker: PhantomData,
         }
     }
 
@@ -56,25 +57,25 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
         self.weights = weights.unwrap_or_else(|| vec![1.0; self.data.len()]);
 
         for (idx, data_point) in self.data.iter().enumerate() {
-            self.kd_tree.add(&data_point.x, idx);
+            self.kd_tree.add(&data_point.features, idx);
         }
     }
 
     pub fn predict(&self, x: &[f64; DIMENSIONS]) -> Result<Diagnosis, Box<dyn Error>> {
-        let (kernel_distances, targets, weights) = self.predict_with_neighbors(x)?;
+        let (kernel_distances, targets, weights) = self.predict_with_neighbors(x);
 
         if targets.is_empty() || weights.is_empty() {
             return Err("no neighbors found for prediction".into());
         }
 
-        let predicted_class = Self::predict_class(kernel_distances, targets, weights);
+        let predicted_class = Self::predict_class(&kernel_distances, &targets, &weights);
         Ok(predicted_class)
     }
 
     fn predict_class(
-        kernel_distances: Vec<f64>,
-        targets: Vec<Diagnosis>,
-        weights: Vec<f32>,
+        kernel_distances: &[f64],
+        targets: &[Diagnosis],
+        weights: &[f32],
     ) -> Diagnosis {
         let mut class_scores: HashMap<Diagnosis, f64> = HashMap::new();
 
@@ -85,16 +86,15 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
 
         class_scores
             .into_iter()
-            .max_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .max_by(|first, second| first.1.partial_cmp(&second.1).unwrap())
             .map(|(class, _)| class)
             .unwrap()
     }
 
-    #[allow(clippy::type_complexity)]
     fn predict_with_neighbors(
         &self,
         x: &[f64; DIMENSIONS],
-    ) -> Result<(Vec<f64>, Vec<Diagnosis>, Vec<f32>), Box<dyn Error>> {
+    ) -> (Vec<f64>, Vec<Diagnosis>, Vec<f32>) {
         let (distances, indices): (Vec<f64>, Vec<usize>) = match self.window {
             WindowType::Fixed => self.kd_tree.within::<M>(x, self.radius.powi(2)),
             WindowType::Unfixed => self.kd_tree.nearest_n::<M>(x, self.k),
@@ -122,7 +122,7 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
         }
 
         for &index in &indices {
-            targets.push(self.data[index].y);
+            targets.push(self.data[index].label);
             weights.push(self.weights[index]);
         }
 
@@ -131,6 +131,6 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
             .map(|&dist| (self.kernel)(dist))
             .collect();
 
-        Ok((kernel_distances, targets, weights))
+        (kernel_distances, targets, weights)
     }
 }

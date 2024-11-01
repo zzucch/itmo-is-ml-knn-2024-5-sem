@@ -28,8 +28,8 @@
           rustfmt
           rustPackages.clippy
 
-          openssl
           pkg-config
+          fontconfig
         ];
       };
     });

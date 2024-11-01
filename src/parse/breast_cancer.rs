@@ -41,9 +41,9 @@ pub fn parse(file_path: &str) -> Result<Vec<CsvEntry>, Box<dyn Error>> {
     let mut values_list = Vec::new();
 
     for result in reader.records() {
-        let record = result?;
-
         const DIAGNOSIS_FIELD_INDEX: usize = 1;
+
+        let record = result?;
 
         let diagnosis_str = record.get(DIAGNOSIS_FIELD_INDEX).unwrap();
         let diagnosis = to_diagnosis(diagnosis_str);
@@ -67,7 +67,7 @@ pub fn parse(file_path: &str) -> Result<Vec<CsvEntry>, Box<dyn Error>> {
 
     let normalized_values = z_score_normalize(&values_list.concat());
 
-    let value_length = entries.get(0).map_or(0, |entry| entry.values.len());
+    let value_length = entries.first().map_or(0, |entry| entry.values.len());
 
     for (entry, new_values) in entries
         .iter_mut()

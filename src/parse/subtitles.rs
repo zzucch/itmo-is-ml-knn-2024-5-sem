@@ -80,8 +80,6 @@ pub fn parse(file_path: &str) -> Result<Vec<CsvEntry>, Box<dyn Error>> {
 
         if let Ok(source) = to_source(&source) {
             entries.push(CsvEntry { source, values });
-        } else {
-            continue;
         }
     }
 
