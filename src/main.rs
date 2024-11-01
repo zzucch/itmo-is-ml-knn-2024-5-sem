@@ -5,7 +5,7 @@ use knn::{
     distance_metric::Chebyshev,
     kernel::*,
     knn::{Data, Knn, WindowType, DIMENSIONS},
-    parse::phones::{parse, CsvEntry, PhoneOs},
+    parse::breast_cancer::{parse, CsvEntry, Diagnosis},
 };
 
 fn csv_entries_to_data(entries: Vec<CsvEntry>) -> Vec<Data> {
@@ -13,7 +13,7 @@ fn csv_entries_to_data(entries: Vec<CsvEntry>) -> Vec<Data> {
         .into_iter()
         .map(|entry| Data {
             x: entry.values.try_into().unwrap(),
-            y: entry.os,
+            y: entry.diagnosis,
         })
         .collect()
 }
@@ -30,7 +30,7 @@ where
     M: kiddo::distance_metric::DistanceMetric<f64, DIMENSIONS>,
 {
     let mut predictions = Vec::new();
-    let actuals: Vec<PhoneOs> = test_data.iter().map(|test_point| test_point.y).collect();
+    let actuals: Vec<Diagnosis> = test_data.iter().map(|test_point| test_point.y).collect();
 
     for test_point in test_data {
         match knn.predict(&test_point.x) {
@@ -58,7 +58,7 @@ where
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    const FILE_PATH: &str = "data/user_behavior_dataset.csv";
+    const FILE_PATH: &str = "data/breast-cancer.csv";
 
     let entries = parse(FILE_PATH)?;
     assert!(!entries.is_empty());
