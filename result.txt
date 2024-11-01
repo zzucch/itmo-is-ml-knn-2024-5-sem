@@ -6,6 +6,7 @@ test_data.len() : 114
 4. kernel: triangular, window: fixed, neighbours: 1, radius: 1, metric: manhattan       accuracy: 95.614%
 502. kernel: gaussian, window: unfixed, neighbours: 21, radius: 1, metric: manhattan    accuracy: 96.491%
 670. kernel: gaussian, window: unfixed, neighbours: 28, radius: 1, metric: manhattan    accuracy: 97.368%
+
 best hyperparameters: Hyperparameters { k: 28, radius: 1.0, window: Unfixed, kernel: 0x5573a65fa8c0, metric: "manhattan" } // kernel is 'gaussian'
 
 unweighted:

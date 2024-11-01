@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use kiddo::{Manhattan, SquaredEuclidean};
 use knn::{
     distance_metric::Chebyshev,
@@ -14,6 +12,7 @@ use plotters::{
     series::LineSeries,
     style::{IntoFont, BLACK, BLUE, RED, WHITE},
 };
+use std::error::Error;
 
 fn csv_entries_to_data(entries: Vec<CsvEntry>) -> Vec<Data> {
     entries
@@ -69,15 +68,16 @@ where
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn update_max_accuracy_and_print(
     accuracy: f64,
     max_accuracy: &mut f64,
     count: &mut usize,
     best_hyperparameters: &mut Hyperparameters,
     kernel_name: &str,
-    kernel_function: &fn(f64) -> f64,
+    kernel_function: fn(f64) -> f64,
     window_name: &str,
-    window_type: &WindowType,
+    window_type: WindowType,
     neighbour_amount: usize,
     radius: usize,
     metric: &str,
@@ -87,10 +87,10 @@ fn update_max_accuracy_and_print(
     if accuracy > *max_accuracy {
         *max_accuracy = accuracy;
 
-        best_hyperparameters.window = *window_type;
+        best_hyperparameters.window = window_type;
         best_hyperparameters.k = neighbour_amount;
         best_hyperparameters.radius = radius as f64;
-        best_hyperparameters.kernel = *kernel_function;
+        best_hyperparameters.kernel = kernel_function;
         best_hyperparameters.metric = metric.to_string();
 
         println!(
@@ -115,7 +115,7 @@ impl Hyperparameters {
             radius: 0.0,
             window: WindowType::Fixed,
             kernel: uniform,
-            metric: "".to_string(),
+            metric: String::new(),
         }
     }
 }
@@ -158,10 +158,12 @@ fn calculate_f1_score(data: &[Data], predictions: &[Diagnosis]) -> f64 {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn main() -> Result<(), Box<dyn Error>> {
-    const FILE_PATH: &str = "data/breast-cancer.csv";
+    const DATA_FILEPATH: &str = "data/breast-cancer.csv";
+    const PLOT_FILENAME: &str = "plot.png";
 
-    let entries = parse(FILE_PATH)?;
+    let entries = parse(DATA_FILEPATH)?;
     assert!(!entries.is_empty());
     assert_eq!(entries.first().unwrap().values.len(), DIMENSIONS);
 
@@ -206,9 +208,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         &mut count,
                         &mut best_hyperparameters,
                         kernel_name,
-                        kernel_function,
+                        *kernel_function,
                         window_name,
-                        window_type,
+                        *window_type,
                         neighbour_amount,
                         radius,
                         "manhattan",
@@ -230,9 +232,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         &mut count,
                         &mut best_hyperparameters,
                         kernel_name,
-                        kernel_function,
+                        *kernel_function,
                         window_name,
-                        window_type,
+                        *window_type,
                         neighbour_amount,
                         radius,
                         "squared euclidean",
@@ -254,9 +256,9 @@ fn main() -> Result<(), Box<dyn Error>> {
                         &mut count,
                         &mut best_hyperparameters,
                         kernel_name,
-                        kernel_function,
+                        *kernel_function,
                         window_name,
-                        window_type,
+                        *window_type,
                         neighbour_amount,
                         radius,
                         "chebyshev",
@@ -268,7 +270,9 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     println!("best hyperparameters: {best_hyperparameters:?}");
 
+    #[allow(clippy::items_after_statements)]
     const MAX_K: usize = 100;
+
     let mut f1_train_values = Vec::with_capacity(MAX_K);
     let mut f1_test_values = Vec::with_capacity(MAX_K);
     let mut k_values = Vec::with_capacity(MAX_K);
@@ -278,7 +282,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "manhattan" => {
                 let mut knn_manhattan: Knn<Manhattan> = Knn::new(
                     k,
-                    best_hyperparameters.radius as f64,
+                    best_hyperparameters.radius,
                     &best_hyperparameters.window,
                     best_hyperparameters.kernel,
                     train_data.len(),
@@ -300,7 +304,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "squared euclidean" => {
                 let mut knn_squared_euclidean: Knn<SquaredEuclidean> = Knn::new(
                     k,
-                    best_hyperparameters.radius as f64,
+                    best_hyperparameters.radius,
                     &best_hyperparameters.window,
                     best_hyperparameters.kernel,
                     train_data.len(),
@@ -322,7 +326,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             "chebyshev" => {
                 let mut knn_chebyshev: Knn<Chebyshev> = Knn::new(
                     k,
-                    best_hyperparameters.radius as f64,
+                    best_hyperparameters.radius,
                     &best_hyperparameters.window,
                     best_hyperparameters.kernel,
                     train_data.len(),
@@ -352,8 +356,6 @@ fn main() -> Result<(), Box<dyn Error>> {
         k_values.push(k);
     }
 
-    const PLOT_FILENAME: &str = "plot.png";
-
     let root = BitMapBackend::new(PLOT_FILENAME, (1024, 768)).into_drawing_area();
     root.fill(&WHITE)?;
 
@@ -370,32 +372,29 @@ fn main() -> Result<(), Box<dyn Error>> {
         .draw_series(LineSeries::new(
             k_values
                 .iter()
-                .cloned()
-                .map(|k| k as i32)
-                .zip(f1_train_values.iter().cloned())
+                .copied()
+                .map(|k_val| i32::try_from(k_val).unwrap())
+                .zip(f1_train_values.iter().copied())
                 .collect::<Vec<_>>(),
-            &RED,
+            RED,
         ))?
         .label("Train F1-score")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], RED));
 
     chart
         .draw_series(LineSeries::new(
             k_values
                 .iter()
-                .cloned()
-                .map(|k| k as i32)
-                .zip(f1_test_values.iter().cloned())
+                .copied()
+                .map(|k_val| i32::try_from(k_val).unwrap())
+                .zip(f1_test_values.iter().copied())
                 .collect::<Vec<_>>(),
-            &BLUE,
+            BLUE,
         ))?
         .label("Test F1-score")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &BLUE));
+        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], BLUE));
 
-    chart
-        .configure_series_labels()
-        .border_style(&BLACK)
-        .draw()?;
+    chart.configure_series_labels().border_style(BLACK).draw()?;
     root.present()?;
 
     println!("plot saved to {PLOT_FILENAME}");
@@ -405,7 +404,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // the amount of potential new code seems not justified for now
     let mut knn_manhattan: Knn<Manhattan> = Knn::new(
         best_hyperparameters.k,
-        best_hyperparameters.radius as f64,
+        best_hyperparameters.radius,
         &best_hyperparameters.window,
         best_hyperparameters.kernel,
         train_data.len(),
