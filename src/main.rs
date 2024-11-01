@@ -5,7 +5,7 @@ use knn::{
     distance_metric::Chebyshev,
     kernel::*,
     knn::{Data, Knn, WindowType, DIMENSIONS},
-    parse::{parse, CsvEntry, Source},
+    parse::phones::{parse, CsvEntry, PhoneOs},
 };
 
 fn csv_entries_to_data(entries: Vec<CsvEntry>) -> Vec<Data> {
@@ -13,7 +13,7 @@ fn csv_entries_to_data(entries: Vec<CsvEntry>) -> Vec<Data> {
         .into_iter()
         .map(|entry| Data {
             x: entry.values.try_into().unwrap(),
-            y: entry.source,
+            y: entry.os,
         })
         .collect()
 }
@@ -30,7 +30,7 @@ where
     M: kiddo::distance_metric::DistanceMetric<f64, DIMENSIONS>,
 {
     let mut predictions = Vec::new();
-    let actuals: Vec<Source> = test_data.iter().map(|test_point| test_point.y).collect();
+    let actuals: Vec<PhoneOs> = test_data.iter().map(|test_point| test_point.y).collect();
 
     for test_point in test_data {
         match knn.predict(&test_point.x) {
@@ -58,7 +58,7 @@ where
 }
 
 fn main() -> Result<(), Box<dyn Error>> {
-    const FILE_PATH: &str = "data/data.csv";
+    const FILE_PATH: &str = "data/user_behavior_dataset.csv";
 
     let entries = parse(FILE_PATH)?;
     assert!(!entries.is_empty());
@@ -66,7 +66,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let data = csv_entries_to_data(entries);
 
-    let (train_data, test_data) = split_data(data, 0.9);
+    let (train_data, test_data) = split_data(data, 0.85);
     println!("train_data.len() : {}", train_data.len());
     println!("test_data.len() : {}", test_data.len());
 
@@ -80,16 +80,12 @@ fn main() -> Result<(), Box<dyn Error>> {
         ("fixed", WindowType::Fixed),
         ("unfixed", WindowType::Unfixed),
     ];
-    let radiuses = [2, 3, 5, 7, 10];
-    let neighbour_amounts = [
-        3, 4, 7, 10, 25, 50, 65, 70, 75, 80, 85, 100, 115, 125, 150, 175, 200,
-    ];
 
     let mut max_accuracy = 0.0;
     let mut count = 0;
 
-    for radius in radiuses {
-        for neighbour_amount in neighbour_amounts {
+    for radius in 1..10 {
+        for neighbour_amount in 1..50 {
             for (window_name, window_type) in &window_types {
                 for (kernel_name, kernel_function) in &kernel_functions {
                     let mut knn_manhattan: Knn<Manhattan> = Knn::new(

@@ -2,9 +2,9 @@ use std::{collections::HashMap, error::Error, marker::PhantomData};
 
 use kiddo::{distance_metric::DistanceMetric, float::kdtree::KdTree};
 
-use crate::parse::Source;
+use crate::parse::phones::PhoneOs;
 
-pub const DIMENSIONS: usize = 13;
+pub const DIMENSIONS: usize = 7;
 
 const BUCKET_SIZE: usize = 512;
 
@@ -17,7 +17,7 @@ pub enum WindowType {
 #[derive(Clone, Copy)]
 pub struct Data {
     pub x: [f64; DIMENSIONS],
-    pub y: Source,
+    pub y: PhoneOs,
 }
 
 pub struct Knn<M: DistanceMetric<f64, DIMENSIONS>> {
@@ -60,7 +60,7 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
         }
     }
 
-    pub fn predict(&self, x: &[f64; DIMENSIONS]) -> Result<Source, Box<dyn Error>> {
+    pub fn predict(&self, x: &[f64; DIMENSIONS]) -> Result<PhoneOs, Box<dyn Error>> {
         let (kernel_distances, targets, weights) = self.predict_with_neighbors(x)?;
 
         if targets.is_empty() || weights.is_empty() {
@@ -73,10 +73,10 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
 
     fn predict_class(
         kernel_distances: Vec<f64>,
-        targets: Vec<Source>,
+        targets: Vec<PhoneOs>,
         weights: Vec<f32>,
-    ) -> Source {
-        let mut class_scores: HashMap<Source, f64> = HashMap::new();
+    ) -> PhoneOs {
+        let mut class_scores: HashMap<PhoneOs, f64> = HashMap::new();
 
         for (i, target) in targets.iter().enumerate() {
             let weighted_score = kernel_distances[i] * weights[i] as f64;
@@ -94,7 +94,7 @@ impl<M: DistanceMetric<f64, DIMENSIONS>> Knn<M> {
     fn predict_with_neighbors(
         &self,
         x: &[f64; DIMENSIONS],
-    ) -> Result<(Vec<f64>, Vec<Source>, Vec<f32>), Box<dyn Error>> {
+    ) -> Result<(Vec<f64>, Vec<PhoneOs>, Vec<f32>), Box<dyn Error>> {
         let (distances, indices): (Vec<f64>, Vec<usize>) = match self.window {
             WindowType::Fixed => self.kd_tree.within::<M>(x, self.radius.powi(2)),
             WindowType::Unfixed => self.kd_tree.nearest_n::<M>(x, self.k),
