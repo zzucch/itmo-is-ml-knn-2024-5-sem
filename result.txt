@@ -1,5 +1,6 @@
 train_data.len() : 341
 test_data.len() : 136
+validation_data.len() : 92 
 
 validation_data.len() : 92
 1. kernel: uniform, window: fixed, neighbours: 1, radius: 1, metric: manhattan  accuracy: 90.217%
