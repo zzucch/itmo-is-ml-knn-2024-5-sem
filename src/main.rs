@@ -5,6 +5,7 @@ use knn::{
     distance_metric::Chebyshev,
     kernel::{epanechnikov, gaussian, triangular, uniform},
     knn::{Data, Knn, WindowType, DIMENSIONS},
+    lowess::lowess,
     parse::breast_cancer::{parse, CsvEntry, Diagnosis},
 };
 use plotters::{
@@ -273,24 +274,75 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut k_values = Vec::with_capacity(MAX_K);
 
     for k in 1..MAX_K {
-        let mut knn_manhattan: Knn<Manhattan> = Knn::new(
-            k,
-            best_hyperparameters.radius as f64,
-            &best_hyperparameters.window,
-            best_hyperparameters.kernel,
-            train_data.len(),
-        );
-        knn_manhattan.fit(train_data.clone(), None);
+        let (train_predictions, test_predictions) = match best_hyperparameters.metric.as_str() {
+            "manhattan" => {
+                let mut knn_manhattan: Knn<Manhattan> = Knn::new(
+                    k,
+                    best_hyperparameters.radius as f64,
+                    &best_hyperparameters.window,
+                    best_hyperparameters.kernel,
+                    train_data.len(),
+                );
+                knn_manhattan.fit(train_data.clone(), None);
 
-        let train_predictions: Vec<_> = train_data
-            .iter()
-            .map(|data| knn_manhattan.predict(&data.features).unwrap())
-            .collect();
+                let train_predictions: Vec<_> = train_data
+                    .iter()
+                    .map(|data| knn_manhattan.predict(&data.features).unwrap())
+                    .collect();
 
-        let test_predictions: Vec<_> = test_data
-            .iter()
-            .map(|data| knn_manhattan.predict(&data.features).unwrap())
-            .collect();
+                let test_predictions: Vec<_> = test_data
+                    .iter()
+                    .map(|data| knn_manhattan.predict(&data.features).unwrap())
+                    .collect();
+
+                (train_predictions, test_predictions)
+            }
+            "squared euclidean" => {
+                let mut knn_squared_euclidean: Knn<SquaredEuclidean> = Knn::new(
+                    k,
+                    best_hyperparameters.radius as f64,
+                    &best_hyperparameters.window,
+                    best_hyperparameters.kernel,
+                    train_data.len(),
+                );
+                knn_squared_euclidean.fit(train_data.clone(), None);
+
+                let train_predictions: Vec<_> = train_data
+                    .iter()
+                    .map(|data| knn_squared_euclidean.predict(&data.features).unwrap())
+                    .collect();
+
+                let test_predictions: Vec<_> = test_data
+                    .iter()
+                    .map(|data| knn_squared_euclidean.predict(&data.features).unwrap())
+                    .collect();
+
+                (train_predictions, test_predictions)
+            }
+            "chebyshev" => {
+                let mut knn_chebyshev: Knn<Chebyshev> = Knn::new(
+                    k,
+                    best_hyperparameters.radius as f64,
+                    &best_hyperparameters.window,
+                    best_hyperparameters.kernel,
+                    train_data.len(),
+                );
+                knn_chebyshev.fit(train_data.clone(), None);
+
+                let train_predictions: Vec<_> = train_data
+                    .iter()
+                    .map(|data| knn_chebyshev.predict(&data.features).unwrap())
+                    .collect();
+
+                let test_predictions: Vec<_> = test_data
+                    .iter()
+                    .map(|data| knn_chebyshev.predict(&data.features).unwrap())
+                    .collect();
+
+                (train_predictions, test_predictions)
+            }
+            _ => panic!("unexpected distance metric"),
+        };
 
         let train_f1 = calculate_f1_score(&train_data, &train_predictions);
         let test_f1 = calculate_f1_score(&test_data, &test_predictions);
@@ -347,6 +399,61 @@ fn main() -> Result<(), Box<dyn Error>> {
     root.present()?;
 
     println!("plot saved to {PLOT_FILENAME}");
+
+    // TODO: in case of dataset change add other distance metrics
+    // for best_hyperparameters.metric
+    // the amount of potential new code seems not justified for now
+    let mut knn_manhattan: Knn<Manhattan> = Knn::new(
+        best_hyperparameters.k,
+        best_hyperparameters.radius as f64,
+        &best_hyperparameters.window,
+        best_hyperparameters.kernel,
+        train_data.len(),
+    );
+
+    let weights = lowess::<Manhattan>(
+        best_hyperparameters.k,
+        best_hyperparameters.radius,
+        best_hyperparameters.window,
+        best_hyperparameters.kernel,
+        &train_data,
+    );
+
+    knn_manhattan.fit(train_data.clone(), None);
+
+    let train_predictions: Vec<_> = train_data
+        .iter()
+        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .collect();
+    let test_predictions: Vec<_> = test_data
+        .iter()
+        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .collect();
+
+    let unweighted_accuracy = calculate_accuracy(&knn_manhattan, &test_data);
+    let unweighted_train_f1 = calculate_f1_score(&train_data, &train_predictions);
+    let unweighted_test_f1 = calculate_f1_score(&test_data, &test_predictions);
+
+    println!("unweighted:");
+    println!("accuracy: {unweighted_accuracy}, train f1 score: {unweighted_train_f1}, test f1 score: {unweighted_test_f1}");
+
+    knn_manhattan.fit(train_data.clone(), Some(weights));
+
+    let train_predictions: Vec<_> = train_data
+        .iter()
+        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .collect();
+    let test_predictions: Vec<_> = test_data
+        .iter()
+        .map(|data| knn_manhattan.predict(&data.features).unwrap())
+        .collect();
+
+    let weighted_accuracy = calculate_accuracy(&knn_manhattan, &test_data);
+    let weighted_train_f1 = calculate_f1_score(&train_data, &train_predictions);
+    let weighted_test_f1 = calculate_f1_score(&test_data, &test_predictions);
+
+    println!("weighted:");
+    println!("accuracy: {weighted_accuracy}, train f1 score: {weighted_train_f1}, test f1 score: {weighted_test_f1}");
 
     Ok(())
 }
